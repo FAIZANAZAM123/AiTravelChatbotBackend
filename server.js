@@ -19,10 +19,8 @@ const io = new Server(server, {
 });
 
 // Middleware
-
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-console.log(path.join(__dirname, 'uploads'))
+console.log(path.join(__dirname, 'uploads'));
 
 app.use(express.json());
 app.use(cors());
@@ -66,16 +64,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 
-// Default route
-app.get('/', (req, res) => {
-  res.send('API is running');
-});
-
+// 🚩 ✅ Use dynamic port for Railway or other cloud platforms
+const PORT = process.env.PORT || 5000;
 
 // Sync the database and start the server
 sequelize.sync({ alter: false }).then(() => {
-  server.listen(5000, () => {
-    console.log('Server is running on http://localhost:5000');
+  server.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
     console.log('Socket.io server is running');
   });
 });
