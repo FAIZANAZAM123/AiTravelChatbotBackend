@@ -66,6 +66,12 @@ app.use('/api/users', userRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/messages', messageRoutes);
 
+// Default route
+app.get('/', (req, res) => {
+  res.send('API is running');
+});
+
+
 // Sync the database and start the server
 sequelize.sync({ alter: false }).then(() => {
   server.listen(5000, () => {
