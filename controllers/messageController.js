@@ -63,13 +63,7 @@ exports.sendMessage = async (req, res) => {
       timestamp: new Date()
     });
     
-    // Emit socket event for user message
-    if (req.io) {
-      req.io.to(conversationId).emit('receive_message', {
-        ...userMessage.toJSON(),
-        isNew: true
-      });
-    }
+ 
     
     // Get previous messages for context
     const previousMessages = await Message.findAll({
@@ -102,13 +96,7 @@ exports.sendMessage = async (req, res) => {
       timestamp: new Date()
     });
     
-    // Emit socket event for AI response
-    if (req.io) {
-      req.io.to(conversationId).emit('receive_message', {
-        ...assistantMessage.toJSON(),
-        isNew: true
-      });
-    }
+
     
     res.status(200).json({
       success: true,
@@ -146,15 +134,7 @@ exports.handleVoiceMessage = async (req, res) => {
       if (!req.file) {
         return res.status(400).json({ message: 'No audio file provided' });
       }
-      
-      // Emit typing started event to show "Transcribing..." in UI
-      if (req.io) {
-        req.io.to(conversationId).emit('transcribing_started', { 
-          conversationId,
-          message: "Transcribing your voice message..." 
-        });
-      }
-      
+     
       // Get the file path
       const audioFilePath = req.file.path;
       
@@ -174,10 +154,7 @@ exports.handleVoiceMessage = async (req, res) => {
         
         transcribedText = transcription;
         
-        // Notify client that transcription is complete
-        if (req.io) {
-          req.io.to(conversationId).emit('transcribing_stopped', { conversationId });
-        }
+      
       } catch (transcriptionError) {
         console.error('Error transcribing audio:', transcriptionError);
         transcribedText = "Sorry, I couldn't transcribe your voice message. Please try again.";
@@ -193,18 +170,7 @@ exports.handleVoiceMessage = async (req, res) => {
         audioFilePath: audioFilePath
       });
       
-      // Emit socket event for user message
-      if (req.io) {
-        req.io.to(conversationId).emit('receive_message', {
-          ...userMessage.toJSON(),
-          isNew: true
-        });
-      }
-      
-      // Emit typing started for AI response
-      if (req.io) {
-        req.io.to(conversationId).emit('typing_started', { conversationId });
-      }
+    
       
       // Get previous messages for context
       const previousMessages = await Message.findAll({
@@ -235,19 +201,7 @@ exports.handleVoiceMessage = async (req, res) => {
         timestamp: new Date()
       });
       
-      // Emit typing stopped before sending message
-      if (req.io) {
-        req.io.to(conversationId).emit('typing_stopped', { conversationId });
-      }
-      
-      // Emit socket event for AI response
-      if (req.io) {
-        req.io.to(conversationId).emit('receive_message', {
-          ...assistantMessage.toJSON(),
-          isNew: true
-        });
-      }
-      
+     
       res.status(200).json({
         success: true,
         transcribedText,
@@ -258,118 +212,13 @@ exports.handleVoiceMessage = async (req, res) => {
     } catch (error) {
       console.error('Error processing voice message:', error);
       
-      // Stop any pending UI states
-      if (req.io && req.body.conversationId) {
-        req.io.to(req.body.conversationId).emit('transcribing_stopped', { 
-          conversationId: req.body.conversationId 
-        });
-        req.io.to(req.body.conversationId).emit('typing_stopped', { 
-          conversationId: req.body.conversationId 
-        });
-      }
+    
       
       res.status(500).json({ message: 'Error processing voice message', error: error.message });
     }
   });
 };
 
-// exports.handleVoiceMessage = async (req, res) => {
-//   upload(req, res, async function(err) {
-//     if (err) {
-//       console.error('Error uploading file:', err);
-//       return res.status(400).json({ message: 'Error uploading file', error: err.message });
-//     }
-    
-//     try {
-//       const { conversationId } = req.body;
-      
-//       if (!conversationId) {
-//         return res.status(400).json({ message: 'Conversation ID is required' });
-//       }
-      
-//       // Check if conversation exists
-//       const conversation = await Conversation.findByPk(conversationId);
-//       if (!conversation) {
-//         return res.status(404).json({ message: 'Conversation not found' });
-//       }
-      
-//       if (!req.file) {
-//         return res.status(400).json({ message: 'No audio file provided' });
-//       }
-      
-//       // In a real application, you would transcribe the audio file here
-//       // using a service like OpenAI's Whisper API or another speech-to-text service
-      
-//       // For now, we'll simulate this with a placeholder text
-//       const transcribedText = "This is a simulated transcription of the voice message.";
-      
-//       // Save user message with the transcribed text
-//       const userMessage = await Message.create({
-//         conversationId,
-//         content: transcribedText,
-//         role: 'user',
-//         timestamp: new Date(),
-//         isVoiceMessage: true,
-//         audioFilePath: req.file.path
-//       });
-      
-//       // Emit socket event for user message
-//       if (req.io) {
-//         req.io.to(conversationId).emit('receive_message', {
-//           ...userMessage.toJSON(),
-//           isNew: true
-//         });
-//       }
-      
-//       // Get previous messages for context
-//       const previousMessages = await Message.findAll({
-//         where: { conversationId },
-//         order: [['timestamp', 'ASC']]
-//       });
-      
-//       // Format messages for OpenAI
-//       const messages = previousMessages.map(msg => ({
-//         role: msg.role,
-//         content: msg.content
-//       }));
-      
-//       // Get response from OpenAI
-//       const completion = await openai.chat.completions.create({
-//         model: "gpt-4-turbo",
-//         messages: messages,
-//         max_tokens: 1000
-//       });
-      
-//       const aiResponse = completion.choices[0].message.content;
-      
-//       // Save AI response
-//       const assistantMessage = await Message.create({
-//         conversationId,
-//         content: aiResponse,
-//         role: 'assistant',
-//         timestamp: new Date()
-//       });
-      
-//       // Emit socket event for AI response
-//       if (req.io) {
-//         req.io.to(conversationId).emit('receive_message', {
-//           ...assistantMessage.toJSON(),
-//           isNew: true
-//         });
-//       }
-      
-//       res.status(200).json({
-//         success: true,
-//         userMessage,
-//         assistantMessage
-//       });
-      
-//     } catch (error) {
-//       console.error('Error processing voice message:', error);
-//       res.status(500).json({ message: 'Error processing voice message', error: error.message });
-//     }
-//   });
-// };
 
 // Get all messages for a conversation
 exports.getMessages = async (req, res) => {
@@ -406,10 +255,7 @@ exports.deleteMessage = async (req, res) => {
     
     await message.destroy();
     
-    // Emit socket event for deleted message
-    if (req.io) {
-      req.io.to(conversationId).emit('message_deleted', { id });
-    }
+ 
     
     res.status(200).json({
       success: true,

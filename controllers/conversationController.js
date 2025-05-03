@@ -24,13 +24,7 @@ exports.createConversation = async (req, res) => {
       title: title || 'New Conversation'
     });
     
-    // Emit socket event for new conversation
-    if (req.io) {
-      req.io.emit('new_conversation', {
-        ...conversation.toJSON(),
-        isNew: true
-      });
-    }
+    
     
     res.status(201).json({
       success: true,
@@ -110,12 +104,7 @@ exports.updateConversationTitle = async (req, res) => {
     conversation.title = title;
     await conversation.save();
     
-    // Emit socket event for updated conversation
-    if (req.io) {
-      req.io.emit('conversation_updated', {
-        ...conversation.toJSON()
-      });
-    }
+ 
     
     res.status(200).json({
       success: true,
@@ -143,13 +132,11 @@ exports.deleteConversation = async (req, res) => {
     // Delete the conversation
     await conversation.destroy();
     
-    // Emit socket event for deleted conversation
-    if (req.io) {
-      req.io.emit('conversation_deleted', { id });
-    }
+
     
     res.status(200).json({
       success: true,
+      conversation,
       message: 'Conversation and associated messages deleted successfully'
     });
   } catch (error) {
